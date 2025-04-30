@@ -138,7 +138,7 @@ $ %s k a cosmoshub testkey`, appName, appName, appName)),
 		},
 	}
 	cmd.Flags().Int32(flagCoinType, -1, "coin type number for HD derivation")
-	cmd.Flags().String(flagAlgo, "", "signing algorithm for key (secp256k1, sr25519)")
+	cmd.Flags().String(flagAlgo, "", "signing algorithm for key (secp256k1, sr25519, eth_secp256k1)")
 
 	return cmd
 }
@@ -259,7 +259,7 @@ $ %s k r demo-key "[mnemonic-words]" --restore-all`, appName, appName, appName))
 		},
 	}
 	cmd.Flags().Int32(flagCoinType, -1, "coin type number for HD derivation")
-	cmd.Flags().String(flagAlgo, "", "signing algorithm for key (secp256k1, sr25519)")
+	cmd.Flags().String(flagAlgo, "", "signing algorithm for key (secp256k1, sr25519, eth_secp256k1)")
 	cmd.Flags().Bool(flagRestoreAll, false, "restores keys for all configured chains with a single mnemonic")
 
 	return cmd

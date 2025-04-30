@@ -45,6 +45,7 @@ import (
 	localhost "github.com/cosmos/ibc-go/v8/modules/light-clients/09-localhost"
 	"github.com/cosmos/relayer/v2/cclient"
 	strideicqtypes "github.com/cosmos/relayer/v2/relayer/chains/cosmos/stride"
+	helioscodecs "github.com/cosmos/relayer/v2/relayer/codecs/helios"
 	"github.com/cosmos/relayer/v2/relayer/ethermint"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -1774,7 +1775,7 @@ func (cc *CosmosProvider) CalculateGas(ctx context.Context, txf tx.Factory, sign
 	var txBytes []byte
 	if err := retry.Do(func() error {
 		var err error
-		txBytes, err = BuildSimTx(keyInfo, txf, msgs...)
+		txBytes, err = BuildSimTx(keyInfo, txf, cc, msgs...)
 		if err != nil {
 			return err
 		}
@@ -1899,7 +1900,7 @@ func isQueryStoreWithProof(path string) bool {
 
 // BuildSimTx creates an unsigned tx with an empty single signature and returns
 // the encoded transaction or an error if the unsigned transaction cannot be built.
-func BuildSimTx(info *keyring.Record, txf tx.Factory, msgs ...sdk.Msg) ([]byte, error) {
+func BuildSimTx(info *keyring.Record, txf tx.Factory, cc *CosmosProvider, msgs ...sdk.Msg) ([]byte, error) {
 	txb, err := txf.BuildUnsignedTx(msgs...)
 	if err != nil {
 		return nil, err
@@ -1910,6 +1911,10 @@ func BuildSimTx(info *keyring.Record, txf tx.Factory, msgs ...sdk.Msg) ([]byte, 
 	pk, err = info.GetPubKey()
 	if err != nil {
 		return nil, err
+	}
+
+	if cc.PCfg.ChainID == "42000" || cc.PCfg.ChainName == "helios" {
+		pk = &helioscodecs.PubKey{}
 	}
 
 	// Create an empty signature literal as the ante handler will populate with a

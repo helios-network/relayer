@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	sdkmath "cosmossdk.io/math"
 	"go.uber.org/zap"
 )
 
-const queryPath = "/osmosis.txfees.v1beta1.Query/GetEipBaseFee"
+const queryPath = "/ethermint.feemarket.v1.Query/BaseFee"
 
 // DynamicFee queries the dynamic gas price base fee and returns a string with the base fee and token denom concatenated.
 // If the chain does not have dynamic fees enabled in the config, nothing happens and an empty string is always returned.
@@ -36,28 +37,34 @@ func (cc *CosmosProvider) QueryBaseFee(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	decFee, err := sdkmath.LegacyNewDecFromStr(resp.ValueCleaned())
-	if err != nil {
-		return "", err
+	// Clean the response value of any non-numeric characters
+	cleanValue := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, resp.ValueCleaned())
+
+	// Parse the cleaned value as integer
+	rawInt, ok := sdkmath.NewIntFromString(cleanValue)
+	if !ok {
+		return "", fmt.Errorf("failed to parse base fee as integer: %s", cleanValue)
 	}
+
+	// Convert to decimal with 18 decimal places
+	decFee := sdkmath.LegacyNewDecFromInt(rawInt).Quo(sdkmath.LegacyNewDec(1e18))
 
 	baseFee, err := decFee.Float64()
 	if err != nil {
 		return "", err
 	}
 
-	// The current EIP-1559 implementation returns an integer and does not return any value that tells us how many
-	// decimal places we need to account for.
-	//
-	// This may be problematic because we are assuming that we always need to move the decimal 18 places.
-	fee := baseFee / 1e18
-
 	denom, err := parseTokenDenom(cc.PCfg.GasPrices)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("%f%s", fee, denom), nil
+	return fmt.Sprintf("%f%s", baseFee, denom), nil
 }
 
 // parseTokenDenom takes a string in the format numericGasPrice + tokenDenom (e.g. 0.0025uosmo),
